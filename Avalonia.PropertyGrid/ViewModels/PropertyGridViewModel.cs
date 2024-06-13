@@ -28,6 +28,11 @@ namespace Avalonia.PropertyGrid.ViewModels
         Category,
 
         /// <summary>
+        /// Category and the category is sorted in alphabetic order.
+        /// </summary>
+        CategoryAlphabetic,
+
+        /// <summary>
         /// The alphabetic
         /// </summary>
         Alphabetic,
@@ -51,19 +56,19 @@ namespace Avalonia.PropertyGrid.ViewModels
         /// <summary>
         /// The hidden by filter
         /// </summary>
-        HiddenByFilter = 1<<0,
+        HiddenByFilter = 1 << 0,
         /// <summary>
         /// The hidden by category filter
         /// </summary>
-        HiddenByCategoryFilter = 1<<1,
+        HiddenByCategoryFilter = 1 << 1,
         /// <summary>
         /// The hidden by no visible chidlren
         /// </summary>
-        HiddenByNoVisibleChidlren = 1<<2,
+        HiddenByNoVisibleChidlren = 1 << 2,
         /// <summary>
         /// The hidden by condition
         /// </summary>
-        HiddenByCondition = 1<<10,
+        HiddenByCondition = 1 << 10,
     }
 
     /// <summary>
@@ -78,7 +83,7 @@ namespace Avalonia.PropertyGrid.ViewModels
         /// </summary>
         /// <value>The filter pattern.</value>
         public IFilterPattern FilterPattern { get; set; } = new PropertyGridFilterPattern();
-                
+
         object _Context;
 
         /// <summary>
@@ -102,13 +107,13 @@ namespace Avalonia.PropertyGrid.ViewModels
             get => _ShowStyle;
             set
             {
-                if(_ShowStyle != value)
+                if (_ShowStyle != value)
                 {
                     this.RaiseAndSetIfChanged(ref _ShowStyle, value);
 
                     this.RaisePropertyChanged(nameof(ShowStyleType));
                     this.RaisePropertyChanged(nameof(ShowStyleText));
-                }                
+                }
             }
         }
 
@@ -133,7 +138,7 @@ namespace Avalonia.PropertyGrid.ViewModels
             }
             set
             {
-                if(value == null)
+                if (value == null)
                 {
                     ShowStyle = PropertyGridShowStyle.Builtin;
                     return;
@@ -194,7 +199,7 @@ namespace Avalonia.PropertyGrid.ViewModels
         /// Gets the categories.
         /// </summary>
         /// <value>The categories.</value>
-        public SortedList<string, List<PropertyDescriptor>> Categories { get; private set; } = new SortedList<string, List<PropertyDescriptor>>();
+        public Dictionary<string, List<PropertyDescriptor>> Categories { get; private set; } = new Dictionary<string, List<PropertyDescriptor>>();
 
         /// <summary>
         /// Occurs when [filter changed].
@@ -208,10 +213,10 @@ namespace Avalonia.PropertyGrid.ViewModels
         /// </summary>
         public event EventHandler FilterChanged;
 
-		/// <summary>
-		/// Occurs when [custom property descriptor filter].
-		/// </summary>
-		public event EventHandler<CustomPropertyDescriptorFilterEventArgs> CustomPropertyDescriptorFilter;
+        /// <summary>
+        /// Occurs when [custom property descriptor filter].
+        /// </summary>
+        public event EventHandler<CustomPropertyDescriptorFilterEventArgs> CustomPropertyDescriptorFilter;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PropertyGridViewModel" /> class.
@@ -268,7 +273,7 @@ namespace Avalonia.PropertyGrid.ViewModels
         public PropertyVisibility PropagateVisibility(IPropertyGridCellInfo info, FilterCategory category = FilterCategory.Default)
         {
             if (info.CellType == PropertyGridCellType.Category)
-            {                
+            {
                 bool AtleastOneVisible = false;
 
                 foreach (var child in info.Children)
@@ -292,7 +297,7 @@ namespace Avalonia.PropertyGrid.ViewModels
         {
             PropertyVisibility visibility = PropertyVisibility.AlwaysVisible;
 
-            if(cellInfo.CellType == PropertyGridCellType.Cell)
+            if (cellInfo.CellType == PropertyGridCellType.Cell)
             {
                 var property = cellInfo.Context.Property;
 
@@ -317,12 +322,12 @@ namespace Avalonia.PropertyGrid.ViewModels
                             }
                         }
                     }
-                    
-                    if(category.HasFlag(FilterCategory.Filter))
+
+                    if (category.HasFlag(FilterCategory.Filter))
                     {
                         if (!FilterPattern.Match(property, target))
                         {
-                            if(childrenVisibilty == null || childrenVisibilty != PropertyVisibility.AlwaysVisible)
+                            if (childrenVisibilty == null || childrenVisibilty != PropertyVisibility.AlwaysVisible)
                             {
                                 visibility |= PropertyVisibility.HiddenByFilter;
                             }
@@ -331,22 +336,22 @@ namespace Avalonia.PropertyGrid.ViewModels
                                 visibility = PropertyVisibility.AlwaysVisible;
                             }
                         }
-                    }                    
+                    }
 
-                    if(category.HasFlag(FilterCategory.Category))
+                    if (category.HasFlag(FilterCategory.Category))
                     {
                         if (CategoryFilter != null && cellInfo.Category.IsNotNullOrEmpty() && !CategoryFilter.IsChecked(cellInfo.Category))
                         {
                             visibility |= PropertyVisibility.HiddenByCategoryFilter;
                         }
                     }
-                                        
-                                    
+
+
                 }
             }
-            else if(cellInfo.CellType == PropertyGridCellType.Category)
+            else if (cellInfo.CellType == PropertyGridCellType.Category)
             {
-                foreach(var child in cellInfo.Children)
+                foreach (var child in cellInfo.Children)
                 {
                     visibility |= PropagateVisibility(child, child.Target, category);
                 }
@@ -364,7 +369,7 @@ namespace Avalonia.PropertyGrid.ViewModels
         {
             Clear();
 
-            if(_Context == null)
+            if (_Context == null)
             {
                 return;
             }
@@ -373,35 +378,35 @@ namespace Avalonia.PropertyGrid.ViewModels
             AllProperties.AddRange(builder.GetProperties().Cast<PropertyDescriptor>().ToList().FindAll(
                 x =>
                 {
-                    if(CustomPropertyDescriptorFilter != null)
+                    if (CustomPropertyDescriptorFilter != null)
                     {
                         CustomPropertyDescriptorFilterEventArgs args = new CustomPropertyDescriptorFilterEventArgs(PropertyGrid.Controls.PropertyGrid.CustomPropertyDescriptorFilterEvent, _Context, x);
 
                         CustomPropertyDescriptorFilter(this, args);
 
-                        if(args.Handled)
+                        if (args.Handled)
                         {
                             return args.IsVisible;
                         }
-					}
+                    }
 
                     return x.IsBrowsable && !x.IsDefined<IgnoreDataMemberAttribute>()/* compatible with ReactiveUI */;
-				}
+                }
                 )
             );
 
             HashSet<string> categories = new HashSet<string>();
-            foreach(var property in AllProperties)
+            foreach (var property in AllProperties)
             {
                 string category = GetCategory(property);
 
-                if(!categories.Contains(category))
+                if (!categories.Contains(category))
                 {
                     categories.Add(category);
                 }
             }
 
-            CategoryFilter = new CheckedMaskModel(categories.OrderBy(x=>x), "All");
+            CategoryFilter = new CheckedMaskModel(categories.OrderBy(x => x), "All");
             CategoryFilter.CheckChanged += OnCategoryFilterChanged;
 
             FilterProperties();
@@ -416,7 +421,7 @@ namespace Avalonia.PropertyGrid.ViewModels
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
         private void OnCategoryFilterChanged(object sender, EventArgs e)
         {
-            FilterProperties();   
+            FilterProperties();
 
             FilterChanged?.Invoke(this, EventArgs.Empty);
         }
